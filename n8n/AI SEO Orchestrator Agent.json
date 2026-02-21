@@ -1,0 +1,551 @@
+{
+  "name": "AI SEO Orchestrator Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo-task-breakdown",
+        "responseMode": "lastNode",
+        "options": {
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -336,
+        624
+      ],
+      "id": "64d7f0bf-5240-46bc-80cd-ab21ebe0d311",
+      "name": "Webhook",
+      "webhookId": "e965d4ca-6d5e-4238-aa42-bde1637c34c4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "47342ed0-47f5-4974-a031-845402df5a4a",
+              "name": "prompt",
+              "value": "={{$json.prompt}}",
+              "type": "string"
+            },
+            {
+              "id": "fb02f0a2-6ae3-4e45-b37f-84f7076a374d",
+              "name": "geo",
+              "value": "={{$json.geo}}",
+              "type": "string"
+            },
+            {
+              "id": "ee32e8f1-6550-4721-bd2b-897bda2cf922",
+              "name": "language",
+              "value": "={{$json.language}}",
+              "type": "string"
+            },
+            {
+              "id": "73fc4e26-fedd-4ea3-b79b-3aa2141686bb",
+              "name": "experience",
+              "value": "={{$json.experience}}",
+              "type": "string"
+            },
+            {
+              "id": "3bcc5631-5dee-4d8d-808e-51c9a9be8902",
+              "name": "meta",
+              "value": "={{$json.meta}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        336
+      ],
+      "id": "32119e71-a853-4141-80f0-5f6f4e93cb4a",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get raw AI output text\nconst rawText =\n  $input.item.json.output[0].content[0].text;\n\n// 2. Parse JSON\nlet data;\ntry {\n  data = JSON.parse(rawText);\n} catch (e) {\n  throw new Error(\"AI output is not valid JSON\");\n}\n\n// 3. Basic structure validation\nif (!data.epic || !Array.isArray(data.tasks)) {\n  throw new Error(\"Missing epic or tasks array\");\n}\n\n// 4. Allowed agent roles\nconst allowedAgents = [\n  \"agent_research\",\n  \"agent_competitor\",\n  \"agent_content_plan\",\n  \"agent_writer\",\n  \"agent_onpage\",\n  \"agent_technical\",\n  \"agent_internal_links\",\n  \"agent_qa\"\n];\n\n// 5. Validate each task\ndata.tasks.forEach((task, index) => {\n  const requiredFields = [\n    \"id\",\n    \"title\",\n    \"description\",\n    \"assigned_agent\",\n    \"difficulty\",\n    \"depends_on\"\n  ];\n\n  requiredFields.forEach(field => {\n    if (!(field in task)) {\n      throw new Error(\n        `Task ${index + 1} is missing field: ${field}`\n      );\n    }\n  });\n\n  if (!allowedAgents.includes(task.assigned_agent)) {\n    throw new Error(\n      `Invalid agent assigned: ${task.assigned_agent}`\n    );\n  }\n\n  if (!Array.isArray(task.depends_on)) {\n    throw new Error(\n      `depends_on must be an array in task ${task.id}`\n    );\n  }\n});\n\n// 6. Output clean orchestrator object\nreturn {\n  epic: data.epic,\n  tasks: data.tasks,\n  meta: {\n    total_tasks: data.tasks.length,\n    agents_involved: [...new Set(data.tasks.map(t => t.assigned_agent))]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        336
+      ],
+      "id": "3de0b6aa-090e-4b94-83ba-43e4f9a0779e",
+      "name": "Parse & Validate Orchestrator Output"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        80,
+        336
+      ],
+      "id": "c0e2a9ec-9715-4669-b8aa-2e739f65c5cb",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1dce97af-3257-4517-abe5-38e7197f5abf",
+              "name": "prompt",
+              "value": "I want to launch an SEO-oriented digital project.  Idea description: It can be a content site, service or product that should organically grow in Google search and attract a target audience through useful, structured and optimized content.  Context: – Topic: information technology / digital products / online services – Goal: long-term SEO growth, not quick traffic – Geography: Europe (can be generalized, without hard GEO) – Team level: junior–middle – Limitations: minimum budget, maximum automation  Your task as an AI orchestrator: 1. Form one clear EPIC goal for the project. 2. Break this goal into logical SEO tasks. 3. Each task: – must be atomic (1 task = 1 responsibility) – must have a clear result – must be performed by a separate AI agent 4. For each task: – specify `id` – `title` – `description` – `assigned_agent` (SEO Research, Content Planning, Content Writing, On-page SEO, Technical SEO, Internal Linking, QA) – `difficulty` (easy / medium) – `depends_on` (if there are dependencies)  Important: – This is NOT a detailed execution plan, but a strategic decomposition. – You are not performing the task, but only designing the work of the AI ​​team. – The response MUST be valid JSON without any text outside of JSON. – The response structure must match the task orchestration for AI agents.",
+              "type": "string"
+            },
+            {
+              "id": "78f9a4d4-6594-493a-9e0b-7373c1acf1e3",
+              "name": "=geo",
+              "value": "Ireland",
+              "type": "string"
+            },
+            {
+              "id": "792eeb8a-3bd0-44b5-835d-3779b2885182",
+              "name": "language",
+              "value": "en",
+              "type": "string"
+            },
+            {
+              "id": "352d38ef-6c9a-4bd1-b77a-f07998ae1f0e",
+              "name": "experience",
+              "value": "junior",
+              "type": "string"
+            },
+            {
+              "id": "ace7c5ea-270a-4bf2-a883-e0ff9df50762",
+              "name": "meta.requested_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "a8cfe6c1-4594-4536-8150-ef4e3d4317ea",
+              "name": "meta.source",
+              "value": "manual",
+              "type": "string"
+            },
+            {
+              "id": "8954712b-6930-4e01-9361-928f916d947d",
+              "name": "meta.version",
+              "value": "v1",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        336
+      ],
+      "id": "d31f099a-4193-4991-808b-2f89abce649b",
+      "name": "Prompt Input"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=SEO GOAL:\n{{$json.prompt}}\n\nContext:\n- GEO: {{$json.geo}}\n- Language: {{$json.language}}\n- Experience level: {{$json.experience}}\n\nMeta:\n{{$json.meta}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "instructions": "You are an AI Orchestrator for a multi-agent SEO system.\n\nCRITICAL OUTPUT RULES:\n- Return ONLY raw valid JSON\n- Do NOT wrap the response in markdown\n- Do NOT include explanations\n- Do NOT include the word \"json\"\n- Do NOT include comments\n- The first character MUST be {\n- The last character MUST be }\n\nIf you violate these rules, the system will break.\n\nJSON SCHEMA (strict):\n{\n  \"epic\": string,\n  \"tasks\": [\n    {\n      \"id\": string,\n      \"title\": string,\n      \"description\": string,\n      \"assigned_agent\": string,\n      \"difficulty\": \"easy\" | \"medium\" | \"hard\",\n      \"depends_on\": string[]\n    }\n  ]\n}\n\nGenerate tasks suitable for the given experience level.\n\nAllowed agents (STRICT):\n- agent_research\n- agent_competitor\n- agent_content_plan\n- agent_writer\n- agent_onpage\n- agent_technical\n- agent_internal_links\n- agent_qa\n\nYou MUST use ONLY these agent identifiers.\nDo NOT invent new agent names.",
+          "maxTokens": 800
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        336
+      ],
+      "id": "7b24c7ce-b526-4b7c-ae83-8f625d52871b",
+      "name": "AI Orchestrator",
+      "credentials": {
+        "openAiApi": {
+          "id": "dQHsO2T6faHt6HV0",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "83QMOxZ76aaVgeXP",
+          "mode": "list",
+          "cachedResultName": "seo_task_registry",
+          "cachedResultUrl": "/projects/KsvYzpHov7PBmZ3J/datatables/83QMOxZ76aaVgeXP"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "row_id",
+              "keyValue": "={{$json.row_id}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id": "={{$json.id}}",
+            "epic": "={{$json.epic}}",
+            "task_id": "={{$json.id}}",
+            "task_title": "={{$json.title}}",
+            "task_description": "={{$json.description}}",
+            "assigned_agent": "={{$json.assigned_agent}}",
+            "difficulty": "={{$json.difficulty}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "epic",
+              "displayName": "epic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_title",
+              "displayName": "task_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_description",
+              "displayName": "task_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "assigned_agent",
+              "displayName": "assigned_agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "difficulty",
+              "displayName": "difficulty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "depends_on",
+              "displayName": "depends_on",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1728,
+        336
+      ],
+      "id": "ed259394-4f1d-4e38-87d6-fba1ac4a2f3c",
+      "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const epic = $input.item.json.epic;\nconst tasks = $input.item.json.tasks;\n\nreturn tasks.map(task => {\n  return {\n    json: {\n      epic,\n      ...task\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        336
+      ],
+      "id": "b60cc9c3-9654-469e-843e-79fa507298ea",
+      "name": "Code (split tasks)"
+    },
+    {
+      "parameters": {
+        "content": "## AI SEO Task Orchestrator\nThis workflow is the core brain of a future AI SEO Team.\nIt takes a human SEO goal, decomposes it into structured tasks, assigns them to specialized AI agents, validates the output, and stores tasks in a persistent database for execution.",
+        "height": 240,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        -96
+      ],
+      "typeVersion": 1,
+      "id": "5f80462a-96ce-47bf-92fc-174e1f01d6b0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Manual trigger for testing and internal use.\nStarts the orchestration process manually.\nUsed for development, debugging, and prompt testing inside n8n.",
+        "height": 240
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -16,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "d080e788-2b57-4ff4-923c-62f06864bac7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Human input layer.\nDefines the initial SEO goal and context in a simple human-readable form.\nThis replaces external consoles and allows prompt editing directly inside n8n.",
+        "height": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "0748b08a-65f8-45f4-9d59-e3f58f61d84d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Input standardization.\n\nNormalizes and structures raw human input into a predictable schema.\nEnsures downstream nodes always receive clean and consistent data.",
+        "height": 240
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        592,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "442031bd-301f-4f0e-9dd4-abb594e85871",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Strategic task orchestrator (NOT executor).\n\nActs as an SEO Team Lead AI.\nAnalyzes the goal and produces a structured task plan:",
+        "height": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        864,
+        512
+      ],
+      "typeVersion": 1,
+      "id": "0e31127d-58c9-4059-a517-ad48a011cbef",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Role: AI output validation layer.\nParses raw AI text into valid JSON.\nValidates structure, required fields, allowed agents, and dependencies.\nPrevents broken or hallucinated task plans from entering the system.",
+        "height": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1152,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "3c394b47-018d-4e8a-b0e6-3006ad08f039",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Persistent task memory.\nStores each task in the central task registry database.\nThis enables: task tracking, agent execution, status updates, future automation",
+        "height": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1712,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "4d5baf29-3fbb-4044-ae69-527400a71718",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Role: Data transformation.\nSplits the orchestrator output into individual task items.\nEach task becomes a separate executable unit for storage and later processing.",
+        "height": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1424,
+        512
+      ],
+      "typeVersion": 1,
+      "id": "76494776-0f22-4c04-9e53-9c5ff95f1d00",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "AI Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Prompt Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Input": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Orchestrator": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate Orchestrator Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate Orchestrator Output": {
+      "main": [
+        [
+          {
+            "node": "Code (split tasks)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (split tasks)": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e4b483ba-d52b-4ccb-9e1d-fedbaa14d3d5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "81a322e38c5fdd50f783620390626b12928d26881f642f5a8ebc43db59ed4c85"
+  },
+  "id": "K1O8PooVDYGugjWm",
+  "tags": []
+}
